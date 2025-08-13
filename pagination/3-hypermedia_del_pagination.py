@@ -4,7 +4,6 @@ Deletion-resilient hypermedia pagination
 """
 
 import csv
-import math
 from typing import List, Dict
 
 
@@ -32,27 +31,26 @@ class Server:
         """
         if self.__indexed_dataset is None:
             dataset = self.dataset()
-            # Keep full dataset indexed (sample output shows full size, not truncated)
-            self.__indexed_dataset = {i: dataset[i] for i in range(len(dataset))}
+            self.__indexed_dataset = {
+                i: dataset[i] for i in range(len(dataset))
+            }
         return self.__indexed_dataset
 
-    def get_hyper_index(self, index: int = None, page_size: int = 10) -> Dict:
-        """Return deletion-resilient page starting at 'index' with 'page_size' items.
-        Skips missing indices in the internal indexed dataset.
+    def get_hyper_index(self, index: int = None,
+                        page_size: int = 10) -> Dict:
+        """Return deletion-resilient page starting at 'index' with
+        'page_size' items. Skips missing indices.
         """
         if index is None:
             index = 0
 
         assert isinstance(index, int) and index >= 0
         indexed = self.indexed_dataset()
-        # Valid range check is against current map size (not original length)
         assert index < len(indexed)
 
         data: List[List] = []
         i = index
         collected = 0
-
-        # Compute an upper bound to stop (use max key to avoid infinite loop)
         max_key = max(indexed.keys()) if indexed else -1
 
         while collected < page_size and i <= max_key:
@@ -69,4 +67,3 @@ class Server:
             "page_size": len(data),
             "next_index": next_index,
         }
-
