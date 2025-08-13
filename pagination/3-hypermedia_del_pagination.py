@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
-"""Simple pagination module."""
+"""
+Deletion-resilient hypermedia pagination
+"""
+
 import csv
-from typing import List, Tuple
-
-
-def index_range(page: int, page_size: int) -> Tuple[int, int]:
-    """Return a tuple of start and end indexes for pagination."""
-    start = (page - 1) * page_size
-    end = start + page_size
-    return start, end
+import math
+from typing import List, Dict
 
 
 class Server:
-    """Server class to paginate a database of popular baby names."""
+    """Server class to paginate a database of popular baby names.
+    """
     DATA_FILE = "Popular_Baby_Names.csv"
 
     def __init__(self):
         self.__dataset = None
+        self.__indexed_dataset = None
 
     def dataset(self) -> List[List]:
-        """Cached dataset."""
+        """Cached dataset
+        """
         if self.__dataset is None:
             with open(self.DATA_FILE) as f:
                 reader = csv.reader(f)
@@ -27,30 +27,46 @@ class Server:
             self.__dataset = dataset[1:]
         return self.__dataset
 
-    def get_page(self, page: int = 1, page_size: int = 10) -> List[List]:
-        """Return a page of the dataset."""
-        assert isinstance(page, int) and page > 0
-        assert isinstance(page_size, int) and page_size > 0
+    def indexed_dataset(self) -> Dict[int, List]:
+        """Dataset indexed by sorting position, starting at 0
+        """
+        if self.__indexed_dataset is None:
+            dataset = self.dataset()
+            # Keep full dataset indexed (sample output shows full size, not truncated)
+            self.__indexed_dataset = {i: dataset[i] for i in range(len(dataset))}
+        return self.__indexed_dataset
 
-        start, end = index_range(page, page_size)
-        data = self.dataset()
+    def get_hyper_index(self, index: int = None, page_size: int = 10) -> Dict:
+        """Return deletion-resilient page starting at 'index' with 'page_size' items.
+        Skips missing indices in the internal indexed dataset.
+        """
+        if index is None:
+            index = 0
 
-        if start >= len(data):
-            return []
-        return data[start:end]
+        assert isinstance(index, int) and index >= 0
+        indexed = self.indexed_dataset()
+        # Valid range check is against current map size (not original length)
+        assert index < len(indexed)
 
-    def get_hyper(self, page: int = 1, page_size: int = 10) -> dict:
-        """return hypermedia info"""
-        data = self.get_page(page, page_size)
-        total_items = len(self,dataset())
-        total_pages = math.ceil(total_items / page_size)
+        data: List[List] = []
+        i = index
+        collected = 0
+
+        # Compute an upper bound to stop (use max key to avoid infinite loop)
+        max_key = max(indexed.keys()) if indexed else -1
+
+        while collected < page_size and i <= max_key:
+            if i in indexed:
+                data.append(indexed[i])
+                collected += 1
+            i += 1
+
+        next_index = i if i <= max_key else None
 
         return {
-                "page_size": len(data),
-                "page": page
-                "data": data
-                "next_page": page + 1 if page < total_pages else None,
-                "prev_page": page - 2 if page > 1 else None,
-                "total_pages": total_pages,
-                }
+            "index": index,
+            "data": data,
+            "page_size": len(data),
+            "next_index": next_index,
+        }
 
