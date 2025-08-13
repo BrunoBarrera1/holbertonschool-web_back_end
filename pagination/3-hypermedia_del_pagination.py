@@ -4,7 +4,8 @@ Deletion-resilient hypermedia pagination
 """
 
 import csv
-from typing import List, Dict
+import math
+from typing import List, Dict, Any
 
 
 class Server:
@@ -24,6 +25,7 @@ class Server:
                 reader = csv.reader(f)
                 dataset = [row for row in reader]
             self.__dataset = dataset[1:]
+
         return self.__dataset
 
     def indexed_dataset(self) -> Dict[int, List]:
@@ -31,38 +33,44 @@ class Server:
         """
         if self.__indexed_dataset is None:
             dataset = self.dataset()
+            truncated_dataset = dataset[:1000]
             self.__indexed_dataset = {
                 i: dataset[i] for i in range(len(dataset))
             }
         return self.__indexed_dataset
 
-    def get_hyper_index(self, index: int = None,page_size: int = 10) -> Dict:
-        """Return deletion-resilient page starting at 'index' with
-        'page_size' items. Skips missing indices.
+    def get_hyper_index(self, index: int = None, page_size: int = 10) -> Dict:
+        """
+        Returns a page of the dataset that is resilient to deletions.
+
+        Args:
+            index (int): The start index of the current page.
+                         Default None, which becomes 0.
+            page_size (int): The size of the page. Default 10.
+
+        Returns:
+            Dict: A dictionary containing pagination info and data
         """
         if index is None:
             index = 0
 
-        assert isinstance(index, int) and index >= 0
-        indexed = self.indexed_dataset()
-        assert index < len(indexed)
+        indexed_data = self.indexed_dataset()
 
-        data: List[List] = []
-        i = index
-        collected = 0
-        max_key = max(indexed.keys()) if indexed else -1
+        assert isinstance(index, int) and 0 <= index < len(self.dataset())
 
-        while collected < page_size and i <= max_key:
-            if i in indexed:
-                data.append(indexed[i])
-                collected += 1
-            i += 1
+        data = []
+        current_index = index
 
-        next_index = i if i <= max_key else None
+        while len(data) < page_size and current_index < len(self.dataset()):
+            if current_index in indexed_data:
+                data.append(indexed_data[current_index])
+            current_index += 1
+
+        next_index = current_index
 
         return {
-            "index": index,
-            "data": data,
-            "page_size": len(data),
-            "next_index": next_index,
+            'index': index,
+            'data': data,
+            'page_size': len(data),
+            'next_index': next_index
         }
