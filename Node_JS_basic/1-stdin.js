@@ -8,8 +8,8 @@ process.stdin.setEncoding('utf8');
 
 // Listen for data from stdin
 process.stdin.on('data', (data) => {
-  const name = data.trim();
-  process.stdout.write(`Your name is: ${name}\n`);
+  const name = data.toString();
+  process.stdout.write(`Your name is: ${name}`);
 });
 
 // Listen for the end of input
