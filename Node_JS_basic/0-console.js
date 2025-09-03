@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-function greet(displayMessage) {
-	return 'Hello, ${displayMessage}!';
+function displayMessage(message) {
+	console.log(message);
 }
 
-console.log(greet("displayMessage"));
+module.exports = displayMessage;
