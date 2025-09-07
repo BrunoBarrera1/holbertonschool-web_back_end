@@ -9,5 +9,3 @@ const app = http.createServer((request, response) => {
 app.listen(1245);
 
 module.exports = app;
-
-module.exports = app;
