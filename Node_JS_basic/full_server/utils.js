@@ -15,7 +15,7 @@ function readDatabase(filePath) {
 
       try {
         const lines = data.split('\n').filter((line) => line.trim() !== '');
-        
+
         if (lines.length <= 1) {
           resolve({});
           return;
